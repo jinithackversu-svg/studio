@@ -27,6 +27,8 @@ import { useTransition } from 'react';
 import Link from 'next/link';
 import { useFirebase } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { UserRole } from '@/lib/types';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -39,7 +41,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -52,12 +54,28 @@ export default function LoginPage() {
   const onSubmit = (values: LoginFormValues) => {
     startTransition(async () => {
       try {
-        await signInWithEmailAndPassword(auth, values.email, values.password);
+        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+        const user = userCredential.user;
+
+        // Fetch user profile to check role
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        let redirectTo = '/';
+        if (userDocSnap.exists()) {
+            const userProfile = userDocSnap.data();
+            if (userProfile.role === UserRole.Operator) {
+                redirectTo = '/operator/dashboard';
+            }
+        }
+        
         toast({
           title: 'Login Successful',
           description: 'Welcome back!',
         });
-        router.push('/');
+
+        router.push(redirectTo);
+
       } catch (error: any) {
         let description = 'An unknown error occurred.';
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
