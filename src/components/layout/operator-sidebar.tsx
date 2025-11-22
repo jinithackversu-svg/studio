@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, UtensilsCrossed, QrCode } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, QrCode, BarChart } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ const navItems = [
     { href: '/operator/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/operator/menu', icon: UtensilsCrossed, label: 'Menu Items' },
     { href: '/operator/scan', icon: QrCode, label: 'Scan QR Code' },
+    { href: '/operator/analytics', icon: BarChart, label: 'Analytics' },
 ];
 
 export function OperatorSidebar() {
