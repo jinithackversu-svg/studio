@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "pizza",
+      "description": "A delicious cheese pizza",
+      "imageUrl": "https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwaXp6YXxlbnwwfHx8fDE3NjM3MTczMDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pizza"
+    },
+    {
+      "id": "burger",
+      "description": "A juicy beef burger",
+      "imageUrl": "https://images.unsplash.com/photo-1530554764233-e79e16c91d08?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxidXJnZXJ8ZW58MHx8fHwxNzYzNzE1MzE4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "burger"
+    },
+    {
+      "id": "salad",
+      "description": "A fresh garden salad",
+      "imageUrl": "https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzYWxhZHxlbnwwfHx8fDE3NjM3MDYwMjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "salad"
+    },
+    {
+      "id": "sushi",
+      "description": "A set of assorted sushi",
+      "imageUrl": "https://images.unsplash.com/photo-1617196035154-1e7e6e28b0db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c3VzaGl8ZW58MHx8fHwxNzYzNzE4Njc1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sushi"
+    },
+    {
+      "id": "pasta",
+      "description": "A plate of spaghetti bolognese",
+      "imageUrl": "https://images.unsplash.com/photo-1598720290281-9f26ae6d6f81?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwYXN0YXxlbnwwfHx8fDE3NjM3MTA0OTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pasta"
+    },
+    {
+      "id": "sandwich",
+      "description": "A club sandwich",
+      "imageUrl": "https://images.unsplash.com/photo-1539252554453-80ab65ce3586?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzYW5kd2ljaHxlbnwwfHx8fDE3NjM3MTc4MjB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sandwich"
+    },
+    {
+      "id": "coffee",
+      "description": "A cup of coffee",
+      "imageUrl": "https://images.unsplash.com/photo-1511920170033-f8396924c348?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjb2ZmZWV8ZW58MHx8fHwxNzYzNzM4MzA0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coffee"
+    },
+    {
+      "id": "qr-code",
+      "description": "A QR code for validation",
+      "imageUrl": "https://images.unsplash.com/photo-1600147131759-880e94a6185f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxxciUyMGNvZGV8ZW58MHx8fHwxNzYzNzI5MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "qr code"
+    }
+  ]
 }
