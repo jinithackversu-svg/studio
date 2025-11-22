@@ -35,8 +35,8 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.customerId == request.auth.uid;
       // Customers can read their own orders, operators can read any order.
       allow read: if (isOwner(resource.data.customerId) || isOperator());
-      // Operators can update any order, customers can only update their own order if it hasn't been processed yet.
-      allow update: if isOperator() || (isOwner(resource.data.customerId) && resource.data.status == 'Payment Awaiting Acceptance');
+      // Operators can update any order. Customers can update their own order only at specific stages.
+      allow update: if isOperator() || (isOwner(resource.data.customerId) && (resource.data.status == 'Payment Awaiting Acceptance' || resource.data.status == 'Accepted - Pending Payment'));
       // Only operators can delete orders (or consider not allowing deletes)
       allow delete: if isOperator();
     }
