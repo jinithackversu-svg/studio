@@ -5,13 +5,11 @@ import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import {
   Order,
-  OrderItem,
   OrderStatus,
   PaymentMethod,
   PaymentStatus,
 } from '@/lib/types';
 import { generateDigitalInvoice } from '@/ai/flows/generate-digital-invoice';
-import QRCode from 'qrcode';
 import { 
   getFirestore
 } from 'firebase-admin/firestore';
@@ -19,44 +17,6 @@ import { getFirebaseAdminApp } from '@/firebase/server';
 
 const app = getFirebaseAdminApp();
 const firestore = getFirestore(app);
-
-const ordersCollection = firestore.collection('orders');
-
-
-// --- CUSTOMER ACTIONS ---
-
-export async function placeOrder(items: OrderItem[], userId: string, customerName: string): Promise<Order> {
-  if (items.length === 0) {
-    throw new Error('Cart is empty.');
-  }
-
-  const newOrderData = {
-    customerName: customerName,
-    customerId: userId,
-    items,
-    total: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    status: OrderStatus.PaymentAwaitingAcceptance,
-    paymentMethod: PaymentMethod.None,
-    paymentStatus: PaymentStatus.Pending,
-    createdAt: new Date(),
-  };
-
-  const docRef = await ordersCollection.add(newOrderData);
-  const qrCodeData = await QRCode.toDataURL(docRef.id);
-  await docRef.update({ qrCode: qrCodeData });
-  
-  revalidatePath('/operator/dashboard');
-  revalidatePath('/my-orders');
-
-  const orderSnap = await docRef.get();
-  const data = orderSnap.data()!;
-
-  return {
-    id: docRef.id,
-    ...data,
-    createdAt: (data.createdAt as any).toDate()
-  } as Order;
-}
 
 // --- OPERATOR ACTIONS ---
 

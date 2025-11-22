@@ -3,8 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MenuItem, OrderItem, UserRole } from '@/lib/types';
-import { placeOrder } from '@/app/actions';
+import { MenuItem, Order, OrderItem, OrderStatus, PaymentMethod, PaymentStatus, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
@@ -12,9 +11,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { PlusCircle, ShoppingCart } from 'lucide-react';
 import { CartSheet } from './cart-sheet';
-import { useUser } from '@/firebase';
+import { useUser, useFirebase } from '@/firebase';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/use-user-role';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import QRCode from 'qrcode';
 
 export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -23,6 +24,7 @@ export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const { userProfile, isRoleLoading } = useUserRole();
+  const { firestore } = useFirebase();
 
   const handleAddToCart = (item: MenuItem) => {
     setCart(prevCart => {
@@ -54,7 +56,7 @@ export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   };
 
   const handlePlaceOrder = async () => {
-    if (!user || !userProfile) {
+    if (!user || !userProfile || !firestore) {
         toast({
             variant: 'destructive',
             title: 'Not logged in',
@@ -71,17 +73,48 @@ export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
         });
         return;
     }
+     if (cart.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Empty Cart',
+            description: 'Your cart is empty.',
+        });
+        return;
+    }
 
     try {
-      const newOrder = await placeOrder(cart, user.uid, userProfile.name);
+      const newOrderData = {
+        customerName: userProfile.name,
+        customerId: user.uid,
+        items: cart,
+        total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        status: OrderStatus.PaymentAwaitingAcceptance,
+        paymentMethod: PaymentMethod.None,
+        paymentStatus: PaymentStatus.Pending,
+        createdAt: new Date(),
+      };
+
+      const ordersCollection = collection(firestore, 'orders');
+      const docRef = await addDoc(ordersCollection, newOrderData);
+      
+      const qrCodeData = await QRCode.toDataURL(docRef.id);
+      await updateDoc(doc(firestore, 'orders', docRef.id), { qrCode: qrCodeData });
+
+      const newOrder: Order = {
+        id: docRef.id,
+        ...newOrderData,
+        qrCode: qrCodeData,
+      }
+      
       toast({
         title: 'Order Placed!',
-        description: `Your order #${newOrder.id} has been placed successfully.`,
+        description: `Your order #${newOrder.id.substring(0,7)} has been placed successfully.`,
       });
       setCart([]);
       setIsCartOpen(false);
       router.push(`/order/${newOrder.id}`);
     } catch (error) {
+      console.error("Error placing order: ", error);
       toast({
         variant: 'destructive',
         title: 'Error',
