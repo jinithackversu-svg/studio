@@ -4,7 +4,6 @@
 import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import {
-  MenuItem,
   Order,
   OrderItem,
   OrderStatus,
@@ -14,10 +13,8 @@ import {
 import { generateDigitalInvoice } from '@/ai/flows/generate-digital-invoice';
 import QRCode from 'qrcode';
 import { 
-  Timestamp,
-  FieldValue,
+  getFirestore
 } from 'firebase-admin/firestore';
-import { getFirestore } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/firebase/server';
 
 const app = getFirebaseAdminApp();
@@ -25,24 +22,6 @@ const firestore = getFirestore(app);
 
 const ordersCollection = firestore.collection('orders');
 
-
-// --- DATA FETCHING ACTIONS ---
-
-export async function getOrderById(id: string): Promise<Order | undefined> {
-  const docRef = firestore.collection('orders').doc(id);
-  const docSnap = await docRef.get();
-
-  if (docSnap.exists) {
-    const data = docSnap.data()!;
-    const createdAt = data.createdAt as Timestamp;
-    return {
-        id: docSnap.id,
-        ...data,
-        createdAt: createdAt.toDate()
-    } as Order;
-  }
-  return undefined;
-}
 
 // --- CUSTOMER ACTIONS ---
 
@@ -59,7 +38,7 @@ export async function placeOrder(items: OrderItem[], userId: string, customerNam
     status: OrderStatus.PaymentAwaitingAcceptance,
     paymentMethod: PaymentMethod.None,
     paymentStatus: PaymentStatus.Pending,
-    createdAt: FieldValue.serverTimestamp(),
+    createdAt: new Date(),
   };
 
   const docRef = await ordersCollection.add(newOrderData);
@@ -69,16 +48,19 @@ export async function placeOrder(items: OrderItem[], userId: string, customerNam
   revalidatePath('/operator/dashboard');
   revalidatePath('/my-orders');
 
-  const createdOrder = await getOrderById(docRef.id);
-  if (!createdOrder) {
-    throw new Error('Failed to retrieve the created order');
-  }
-  return createdOrder;
+  const orderSnap = await docRef.get();
+  const data = orderSnap.data()!;
+
+  return {
+    id: docRef.id,
+    ...data,
+    createdAt: (data.createdAt as any).toDate()
+  } as Order;
 }
 
 // --- OPERATOR ACTIONS ---
 
-export async function updateOrderStatus(orderId: string, status: OrderStatus, paymentMethod?: PaymentMethod): Promise<Order> {
+export async function updateOrderStatus(orderId: string, status: OrderStatus, paymentMethod?: PaymentMethod): Promise<void> {
   const orderRef = firestore.collection('orders').doc(orderId);
   const orderSnap = await orderRef.get();
   if (!orderSnap.exists) {
@@ -100,30 +82,16 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, pa
   }
   
   await orderRef.update(updateData);
-  
-  const updatedDoc = await orderRef.get();
-  const updatedOrderData = updatedDoc.data()!;
-  const createdAt = updatedOrderData?.createdAt as Timestamp;
-
-  const updatedOrder = { 
-      id: updatedDoc.id, 
-      ...updatedOrderData,
-      createdAt: createdAt.toDate()
-    } as Order;
-
 
   revalidatePath('/operator/dashboard');
   revalidatePath(`/order/${orderId}`);
   revalidatePath('/operator/scan');
   revalidatePath('/my-orders');
-
-  return updatedOrder;
 }
 
 // --- GenAI ACTION ---
-export async function generateInvoiceAction(orderId: string) {
+export async function generateInvoiceAction(order: Order) {
   'use server';
-  const order = await getOrderById(orderId);
   if (!order) {
     notFound();
   }

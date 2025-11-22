@@ -4,16 +4,36 @@ import { useState, useEffect } from 'react';
 import { generateInvoiceAction } from '@/app/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { Order } from '@/lib/types';
+import { useDoc, useFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 
 export function DigitalInvoice({ orderId }: { orderId: string }) {
   const [invoice, setInvoice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { firestore } = useFirebase();
+
+  const orderRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'orders', orderId);
+  }, [firestore, orderId]);
+
+  const { data: order, isLoading: isOrderLoading } = useDoc<Order>(orderRef);
+
   useEffect(() => {
+    if (isOrderLoading) return;
+    if (!order) {
+      setError('Could not load order details to generate invoice.');
+      setIsLoading(false);
+      return;
+    }
+
     const getInvoice = async () => {
       try {
-        const result = await generateInvoiceAction(orderId);
+        const result = await generateInvoiceAction(order);
         if (result?.invoiceText) {
           setInvoice(result.invoiceText);
         } else {
@@ -26,9 +46,9 @@ export function DigitalInvoice({ orderId }: { orderId: string }) {
       }
     };
     getInvoice();
-  }, [orderId]);
+  }, [order, isOrderLoading]);
 
-  if (isLoading) {
+  if (isLoading || isOrderLoading) {
     return (
         <Card className="bg-background/50">
             <CardContent className="p-6">

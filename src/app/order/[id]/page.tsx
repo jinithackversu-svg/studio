@@ -1,45 +1,53 @@
 'use client';
 
-import { getOrderById } from '@/app/actions';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import OrderDetails from '@/components/customer/order-details';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { Order } from '@/lib/types';
+import { useDoc, useFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 
-export default function OrderPage({ params }: { params: { id: string } }) {
+export default function OrderPage() {
+  const params = useParams<{ id: string }>();
   const { user, isUserLoading } = useUser();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { firestore } = useFirebase();
+
+  const orderRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'orders', params.id);
+  }, [firestore, params.id]);
+
+  const { data: order, isLoading } = useDoc<Order>(orderRef);
+
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isLoading || isUserLoading) return;
 
-    const fetchOrder = async () => {
-      const fetchedOrder = await getOrderById(params.id);
-      if (!fetchedOrder) {
-        notFound();
-      }
+    if (!order) {
+        // useDoc will be null if it doesn't exist.
+        // We let the component render notFound()
+        setIsAuthorized(true); // Effectively, allow render to proceed to notFound
+        return;
+    }
 
-      // Security check: ensure the logged-in user owns this order
-      if (user && fetchedOrder.customerId !== user.uid) {
-         notFound(); // Or show an access denied page
-      }
-      
-      setOrder(fetchedOrder);
-      setLoading(false);
-    };
+    if (user && order.customerId === user.uid) {
+      setIsAuthorized(true);
+    } else {
+      setIsAuthorized(false);
+    }
+  }, [order, user, isLoading, isUserLoading]);
 
-    fetchOrder();
-  }, [params.id, user, isUserLoading]);
   
-  if (loading) {
-    return <div>Loading...</div>
+  if (isLoading || isUserLoading || isAuthorized === null) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
-  if (!order) {
+  if (!isAuthorized || !order) {
     return notFound();
   }
 
