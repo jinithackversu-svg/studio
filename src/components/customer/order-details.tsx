@@ -2,7 +2,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { Order, OrderStatus, PaymentMethod, PaymentStatus } from '@/lib/types';
+import { Order, OrderStatus, PaymentMethod } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';

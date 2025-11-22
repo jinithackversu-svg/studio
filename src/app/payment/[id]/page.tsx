@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useTransition } from 'react';
@@ -46,7 +45,7 @@ export default function PaymentPage() {
                     description: 'Your payment has been processed.',
                 });
                 
-                router.push(`/payment/${order.id}/success`);
+                router.push(`/order/${order.id}`);
 
             } catch (error) {
                 console.error("Error processing payment:", error);
