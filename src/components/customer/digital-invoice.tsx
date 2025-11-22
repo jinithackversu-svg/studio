@@ -33,7 +33,15 @@ export function DigitalInvoice({ orderId }: { orderId: string }) {
 
     const getInvoice = async () => {
       try {
-        const result = await generateInvoiceAction(order);
+        // Pass only the necessary primitive data to the server action
+        const result = await generateInvoiceAction({
+            customerName: order.customerName,
+            orderId: order.id,
+            items: order.items,
+            total: order.total,
+            paymentMethod: order.paymentMethod,
+            qrCode: order.qrCode
+        });
         if (result?.invoiceText) {
           setInvoice(result.invoiceText);
         } else {

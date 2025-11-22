@@ -3,30 +3,40 @@
 
 import { notFound } from 'next/navigation';
 import {
-  Order,
+  OrderItem,
+  PaymentMethod,
 } from '@/lib/types';
 import { generateDigitalInvoice } from '@/ai/flows/generate-digital-invoice';
 
+type GenerateInvoiceActionInput = {
+    customerName: string;
+    orderId: string;
+    items: OrderItem[];
+    total: number;
+    paymentMethod: PaymentMethod;
+    qrCode: string;
+}
+
 // --- GenAI ACTION ---
-export async function generateInvoiceAction(order: Order) {
+export async function generateInvoiceAction(input: GenerateInvoiceActionInput) {
   'use server';
-  if (!order) {
+  if (!input) {
     notFound();
   }
 
-  const qrCodeDataUri = order.qrCode;
+  const { customerName, orderId, items, total, paymentMethod, qrCode } = input;
 
-  const input = {
-    customerName: order.customerName,
-    orderId: order.id,
-    orderItems: order.items.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
-    totalAmount: order.total,
-    paymentMethod: order.paymentMethod,
-    qrCodeDataUri,
+  const flowInput = {
+    customerName,
+    orderId,
+    orderItems: items.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
+    totalAmount: total,
+    paymentMethod: paymentMethod,
+    qrCodeDataUri: qrCode,
   };
 
   try {
-    const result = await generateDigitalInvoice(input);
+    const result = await generateDigitalInvoice(flowInput);
     return result;
   } catch (error) {
     console.error('Error generating digital invoice:', error);
