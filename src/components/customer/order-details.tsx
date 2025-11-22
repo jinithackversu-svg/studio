@@ -2,7 +2,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { Order, OrderStatus, PaymentMethod } from '@/lib/types';
+import { Order, OrderStatus, PaymentMethod, PaymentStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -51,6 +51,31 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
       }
     });
   };
+
+  const handleOnlinePaymentSelection = () => {
+    if (!order) return;
+    startTransition(async () => {
+        try {
+            const orderDocRef = doc(firestore, 'orders', order.id);
+            await updateDoc(orderDocRef, {
+                status: OrderStatus.Processing,
+                paymentMethod: PaymentMethod.Online,
+                paymentStatus: PaymentStatus.Paid
+            });
+            toast({
+                title: 'Payment Successful',
+                description: 'Your online payment has been confirmed.',
+            });
+        } catch (error) {
+            console.error("Error processing online payment:", error)
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not process online payment.',
+            });
+        }
+    });
+  };
   
   if (isLoading) {
     return <p>Loading order details...</p>
@@ -91,10 +116,13 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
       {order.status === OrderStatus.AcceptedPendingPayment && (
         <div className="p-4 bg-accent/50 rounded-lg text-center space-y-4">
           <h3 className="text-lg font-semibold text-accent-foreground">Confirm Payment Method</h3>
-          <p className="text-muted-foreground">Your order has been accepted! Please confirm you will pay with cash at the counter.</p>
+          <p className="text-muted-foreground">Your order has been accepted! Please confirm your payment method.</p>
           <div className="flex justify-center gap-4">
-            <Button onClick={handleCashPaymentSelection} disabled={isPending}>
+            <Button variant="secondary" onClick={handleCashPaymentSelection} disabled={isPending}>
               Pay with Cash at Counter
+            </Button>
+            <Button onClick={handleOnlinePaymentSelection} disabled={isPending}>
+              Pay Online Now
             </Button>
           </div>
         </div>
