@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { MenuItem } from '@/lib/types';
-import { upsertMenuItem } from '@/app/actions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/firebase';
+import { collection, doc, setDoc, addDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -55,6 +56,7 @@ interface MenuFormProps {
 export function MenuForm({ item, onFormSubmit }: MenuFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { firestore } = useFirebase();
 
   const form = useForm<MenuFormValues>({
     resolver: zodResolver(formSchema),
@@ -70,11 +72,27 @@ export function MenuForm({ item, onFormSubmit }: MenuFormProps) {
   const onSubmit = (values: MenuFormValues) => {
     startTransition(async () => {
       try {
-        const updatedItem = await upsertMenuItem(values);
+        const { id, ...dataToSave } = values;
+        let savedItem: MenuItem;
+        
+        if (id) {
+          // Update existing item
+          const docRef = doc(firestore, 'menu_items', id);
+          await setDoc(docRef, dataToSave, { merge: true });
+          savedItem = { id, ...dataToSave };
+        } else {
+          // Create new item
+          const collectionRef = collection(firestore, 'menu_items');
+          const docRef = await addDoc(collectionRef, dataToSave);
+          savedItem = { id: docRef.id, ...dataToSave };
+        }
+        
         toast({ title: 'Success', description: `Menu item ${item ? 'updated' : 'created'}.` });
-        onFormSubmit(updatedItem);
+        onFormSubmit(savedItem);
+
       } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save menu item.' });
+        console.error("Error saving menu item:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save menu item. Check console for details.' });
       }
     });
   };

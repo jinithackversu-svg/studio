@@ -3,7 +3,6 @@
 
 import { useState, useTransition } from 'react';
 import { MenuItem } from '@/lib/types';
-import { upsertMenuItem, deleteMenuItem } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useCollection, useFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 
 export default function MenuTable() {
@@ -44,8 +43,8 @@ export default function MenuTable() {
     const handleToggleAvailability = (item: MenuItem) => {
         startTransition(async () => {
             try {
-                await upsertMenuItem({ ...item, isAvailable: !item.isAvailable });
-                // UI will update automatically via the real-time listener
+                const docRef = doc(firestore, 'menu_items', item.id);
+                await updateDoc(docRef, { isAvailable: !item.isAvailable });
                 toast({ title: 'Success', description: 'Availability updated.' });
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not update item availability.' });
@@ -54,7 +53,6 @@ export default function MenuTable() {
     };
 
     const handleFormSubmit = (item: MenuItem) => {
-        // The real-time listener will handle UI updates
         setIsFormOpen(false);
         setSelectedItem(undefined);
     };
@@ -62,8 +60,8 @@ export default function MenuTable() {
     const handleDelete = (id: string) => {
         startTransition(async () => {
             try {
-                await deleteMenuItem(id);
-                // UI will update automatically
+                const docRef = doc(firestore, 'menu_items', id);
+                await deleteDoc(docRef);
                 toast({ title: 'Success', description: 'Menu item deleted.' });
             } catch (error) {
                  toast({ variant: 'destructive', title: 'Error', description: 'Could not delete menu item.' });

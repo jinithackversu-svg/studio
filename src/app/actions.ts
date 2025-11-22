@@ -23,32 +23,10 @@ import { getFirebaseAdminApp } from '@/firebase/server';
 const app = getFirebaseAdminApp();
 const firestore = getFirestore(app);
 
-const menuItemsCollection = firestore.collection('menu_items');
 const ordersCollection = firestore.collection('orders');
 
 
 // --- DATA FETCHING ACTIONS ---
-
-// Note: getMenuItems and getOrders are no longer used by the frontend,
-// but are kept here for potential future server-side use.
-
-export async function getMenuItems(): Promise<MenuItem[]> {
-  const snapshot = await menuItemsCollection.get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-}
-
-export async function getOrders(): Promise<Order[]> {
-    const snapshot = await ordersCollection.orderBy('createdAt', 'desc').get();
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        const createdAt = data.createdAt as Timestamp;
-        return { 
-            id: doc.id,
-            ...data,
-            createdAt: createdAt.toDate(),
-         } as Order
-    });
-}
 
 export async function getOrderById(id: string): Promise<Order | undefined> {
   const docRef = firestore.collection('orders').doc(id);
@@ -141,34 +119,6 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, pa
 
   return updatedOrder;
 }
-
-export async function upsertMenuItem(itemData: Omit<MenuItem, 'id'> & { id?: string }): Promise<MenuItem> {
-    if (itemData.id) {
-        // Update
-        const docRef = firestore.collection('menu_items').doc(itemData.id);
-        const { id, ...dataToUpdate } = itemData;
-        await docRef.update(dataToUpdate);
-        revalidatePath('/operator/menu');
-        revalidatePath('/');
-        return { ...itemData, id: itemData.id };
-    } else {
-        // Create
-        const newItemData = { ...itemData };
-        const docRef = await menuItemsCollection.add(newItemData);
-        revalidatePath('/operator/menu');
-        revalidatePath('/');
-        return { ...newItemData, id: docRef.id };
-    }
-}
-
-export async function deleteMenuItem(id: string): Promise<{ success: boolean }> {
-    const docRef = firestore.collection('menu_items').doc(id);
-    await docRef.delete();
-    revalidatePath('/operator/menu');
-    revalidatePath('/');
-    return { success: true };
-}
-
 
 // --- GenAI ACTION ---
 export async function generateInvoiceAction(orderId: string) {
