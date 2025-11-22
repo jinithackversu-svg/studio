@@ -23,8 +23,8 @@ service cloud.firestore {
 
     // Menu items collection
     match /menu_items/{menuItemId} {
-      // Anyone can read the menu
-      allow read: if true;
+      // Anyone can read and list the menu
+      allow get, list: if true;
       // Only operators can create, update, or delete menu items.
       allow write: if isOperator();
     }
