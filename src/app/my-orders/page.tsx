@@ -1,48 +1,45 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useFirebase } from '@/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { Order } from '@/lib/types';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
+import { useMemo } from 'react';
 
 export default function MyOrdersPage() {
   const { user, firestore, isUserLoading } = useFirebase();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (isUserLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+      collection(firestore, 'orders'),
+      where('customerId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, user]);
 
-    const fetchOrders = async () => {
-      const ordersQuery = query(
-        collection(firestore, 'orders'),
-        where('customerId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-      const querySnapshot = await getDocs(ordersQuery);
-      const fetchedOrders = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+  const { data: orders, isLoading } = useCollection<Order>(ordersQuery);
+  
+  const processedOrders = useMemo(() => {
+    if (!orders) return [];
+    return orders.map(order => {
+        const createdAt = order.createdAt as unknown as Timestamp;
         return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt.toDate()
-        } as Order;
-      });
-      setOrders(fetchedOrders);
-      setLoading(false);
-    };
+            ...order,
+            createdAt: createdAt.toDate(),
+        };
+    });
+  }, [orders]);
 
-    fetchOrders();
-  }, [user, firestore, isUserLoading]);
+
+  const pageIsLoading = isUserLoading || isLoading;
 
   return (
     <div className="flex flex-col w-full min-h-screen">
@@ -55,20 +52,20 @@ export default function MyOrdersPage() {
               <CardDescription>Here is a list of your past and current orders.</CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {pageIsLoading ? (
                 <p>Loading your orders...</p>
               ) : !user ? (
                  <p className="text-center text-muted-foreground">Please <Link href="/login" className="text-primary underline">log in</Link> to see your orders.</p>
-              ) : orders.length === 0 ? (
+              ) : processedOrders.length === 0 ? (
                 <p className="text-center text-muted-foreground">You haven't placed any orders yet.</p>
               ) : (
                 <div className="space-y-4">
-                  {orders.map(order => (
+                  {processedOrders.map(order => (
                     <Card key={order.id}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
                             <div>
-                                <CardTitle>Order #{order.id}</CardTitle>
+                                <CardTitle>Order #{order.id.substring(0, 7)}...</CardTitle>
                                 <CardDescription>{format(order.createdAt, "MMMM d, yyyy 'at' h:mm a")}</CardDescription>
                             </div>
                             <div className="text-right">
