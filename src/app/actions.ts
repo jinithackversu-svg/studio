@@ -29,6 +29,9 @@ const ordersCollection = firestore.collection('orders');
 
 // --- DATA FETCHING ACTIONS ---
 
+// Note: getMenuItems and getOrders are no longer used by the frontend,
+// but are kept here for potential future server-side use.
+
 export async function getMenuItems(): Promise<MenuItem[]> {
   const snapshot = await menuItemsCollection.get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));

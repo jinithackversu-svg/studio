@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -9,18 +10,28 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { useCollection, useFirebase } from '@/firebase';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 
-export function OrderQueue({ initialOrders }: { initialOrders: Order[] }) {
-    const [orders, setOrders] = useState<Order[]>(initialOrders);
+export function OrderQueue() {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
+    const { firestore } = useFirebase();
+
+    const ordersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'orders'), orderBy('createdAt', 'desc'));
+    }, [firestore]);
+
+    const { data: orders, isLoading } = useCollection<Order>(ordersQuery);
 
     const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
         startTransition(async () => {
             try {
-                const updatedOrder = await updateOrderStatus(orderId, newStatus);
-                setOrders(prevOrders => prevOrders.map(o => o.id === orderId ? updatedOrder : o));
-                toast({ title: 'Success', description: `Order #${orderId} moved to ${newStatus}.` });
+                // We don't need the returned value as the real-time listener will update the UI
+                await updateOrderStatus(orderId, newStatus);
+                toast({ title: 'Success', description: `Order status updated.` });
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to update order status.' });
             }
@@ -28,6 +39,7 @@ export function OrderQueue({ initialOrders }: { initialOrders: Order[] }) {
     };
 
     const groupedOrders = useMemo(() => {
+        if (!orders) return {} as Record<OrderStatus, Order[]>;
         return orders.reduce((acc, order) => {
             const status = order.status;
             if (!acc[status]) {
@@ -52,7 +64,7 @@ export function OrderQueue({ initialOrders }: { initialOrders: Order[] }) {
                     <div>
                         <CardTitle>Order #{order.id}</CardTitle>
                         <CardDescription>
-                            {order.customerName} - {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}
+                            {order.customerName} - {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                         </CardDescription>
                     </div>
                     <Badge variant={order.paymentStatus === 'Paid' ? 'secondary' : 'outline'}>{order.paymentMethod === 'None' ? order.paymentStatus : `${order.paymentMethod} - ${order.paymentStatus}`}</Badge>
@@ -81,6 +93,10 @@ export function OrderQueue({ initialOrders }: { initialOrders: Order[] }) {
             </CardFooter>
         </Card>
     );
+
+    if (isLoading) {
+        return <p>Loading orders...</p>
+    }
 
     return (
         <Tabs defaultValue={OrderStatus.PaymentAwaitingAcceptance} className="w-full">

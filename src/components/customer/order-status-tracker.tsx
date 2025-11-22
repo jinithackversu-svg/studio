@@ -1,11 +1,12 @@
+
 'use client';
 
 import { OrderStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Circle, CircleDashed, Clock, CookingPot, ShoppingBag, ThumbsUp, XCircle } from 'lucide-react';
+import { CheckCircle, CircleDashed, CookingPot, ShoppingBag, ThumbsUp, XCircle, Timer } from 'lucide-react';
 
 const statusSteps = [
-  { status: OrderStatus.PaymentAwaitingAcceptance, label: 'Awaiting Acceptance', icon: <Clock /> },
+  { status: OrderStatus.PaymentAwaitingAcceptance, label: 'Awaiting Acceptance', icon: <Timer /> },
   { status: OrderStatus.AcceptedPendingPayment, label: 'Accepted', icon: <ThumbsUp /> },
   { status: OrderStatus.Processing, label: 'Processing', icon: <CookingPot /> },
   { status: OrderStatus.Ready, label: 'Ready for Pickup', icon: <ShoppingBag /> },
@@ -28,7 +29,7 @@ export function OrderStatusTracker({ currentStatus }: { currentStatus: OrderStat
     <div className="flex items-center justify-between w-full p-4 overflow-x-auto">
       {statusSteps.map((step, index) => {
         const isActive = index === currentIndex;
-        const isCompleted = index < currentIndex;
+        const isCompleted = currentIndex > -1 && index < currentIndex;
         const Icon = isCompleted ? <CheckCircle /> : isActive ? step.icon : <CircleDashed />;
 
         return (

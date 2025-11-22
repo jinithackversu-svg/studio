@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -21,20 +22,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { useCollection, useFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 
-export default function MenuTable({ initialItems }: { initialItems: MenuItem[] }) {
-    const [items, setItems] = useState<MenuItem[]>(initialItems);
+export default function MenuTable() {
     const [isPending, startTransition] = useTransition();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<MenuItem | undefined>(undefined);
     const { toast } = useToast();
+    const { firestore } = useFirebase();
+
+    const menuItemsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'menu_items');
+    }, [firestore]);
+
+    const { data: items, isLoading } = useCollection<MenuItem>(menuItemsQuery);
 
     const handleToggleAvailability = (item: MenuItem) => {
         startTransition(async () => {
             try {
-                const updatedItem = await upsertMenuItem({ ...item, isAvailable: !item.isAvailable });
-                setItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+                await upsertMenuItem({ ...item, isAvailable: !item.isAvailable });
+                // UI will update automatically via the real-time listener
+                toast({ title: 'Success', description: 'Availability updated.' });
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not update item availability.' });
             }
@@ -42,13 +54,7 @@ export default function MenuTable({ initialItems }: { initialItems: MenuItem[] }
     };
 
     const handleFormSubmit = (item: MenuItem) => {
-        setItems(prev => {
-            const existing = prev.find(i => i.id === item.id);
-            if (existing) {
-                return prev.map(i => i.id === item.id ? item : i);
-            }
-            return [...prev, item];
-        });
+        // The real-time listener will handle UI updates
         setIsFormOpen(false);
         setSelectedItem(undefined);
     };
@@ -57,12 +63,16 @@ export default function MenuTable({ initialItems }: { initialItems: MenuItem[] }
         startTransition(async () => {
             try {
                 await deleteMenuItem(id);
-                setItems(prev => prev.filter(i => i.id !== id));
+                // UI will update automatically
                 toast({ title: 'Success', description: 'Menu item deleted.' });
             } catch (error) {
                  toast({ variant: 'destructive', title: 'Error', description: 'Could not delete menu item.' });
             }
         });
+    }
+
+    if (isLoading) {
+        return <p>Loading menu...</p>;
     }
 
     return (
@@ -91,7 +101,7 @@ export default function MenuTable({ initialItems }: { initialItems: MenuItem[] }
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {items.map((item) => (
+                        {items && items.map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
                                 <TableCell>${item.price.toFixed(2)}</TableCell>
@@ -140,6 +150,7 @@ export default function MenuTable({ initialItems }: { initialItems: MenuItem[] }
                         ))}
                     </TableBody>
                 </Table>
+                {(!items || items.length === 0) && <p className="text-center p-4 text-muted-foreground">No menu items found.</p>}
             </div>
         </div>
     );

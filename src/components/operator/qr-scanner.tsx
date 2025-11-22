@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useTransition } from 'react';
@@ -10,9 +11,11 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { useCollection, useFirebase } from '@/firebase';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 
-export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
-  const [orders, setOrders] = useState(initialOrders);
+export function QrScanner() {
   const [scannedOrderId, setScannedOrderId] = useState<string | null>(null);
   const [scannedOrder, setScannedOrder] = useState<Order | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -20,6 +23,14 @@ export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { firestore } = useFirebase();
+
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'orders'), orderBy('createdAt', 'desc'));
+  }, [firestore]);
+
+  const { data: orders, isLoading } = useCollection<Order>(ordersQuery);
 
   useEffect(() => {
     const getCameraPermission = async () => {
@@ -59,7 +70,7 @@ export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
           });
           if (code && code.data !== scannedOrderId) {
             setScannedOrderId(code.data);
-            const foundOrder = orders.find(o => o.id === code.data);
+            const foundOrder = orders?.find(o => o.id === code.data);
             setScannedOrder(foundOrder || null);
           }
         }
@@ -67,23 +78,30 @@ export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
       animationFrameId = requestAnimationFrame(tick);
     };
 
-    if (hasCameraPermission && !scannedOrder) {
+    if (hasCameraPermission && !scannedOrder && !isLoading) {
       animationFrameId = requestAnimationFrame(tick);
     }
 
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [hasCameraPermission, orders, scannedOrder, scannedOrderId]);
+  }, [hasCameraPermission, orders, scannedOrder, scannedOrderId, isLoading]);
+
+   useEffect(() => {
+    // If the live data for the scanned order changes, update our state
+    if (scannedOrderId && orders) {
+      const updatedOrder = orders.find(o => o.id === scannedOrderId);
+      setScannedOrder(updatedOrder || null);
+    }
+   }, [orders, scannedOrderId]);
   
   const handleConfirmPickup = () => {
     if (!scannedOrder) return;
     
     startTransition(async () => {
         try {
-            const updatedOrder = await updateOrderStatus(scannedOrder.id, OrderStatus.PickedUp);
-            setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-            setScannedOrder(updatedOrder);
+            await updateOrderStatus(scannedOrder.id, OrderStatus.PickedUp);
+            // UI will update from live listener
             toast({
                 title: 'Pickup Confirmed',
                 description: `Order #${scannedOrder.id} has been marked as picked up.`,
@@ -106,14 +124,14 @@ export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
   return (
     <Card>
       <CardContent className="p-6">
-        {scannedOrder ? (
+        {isLoading ? <p>Loading orders...</p> : scannedOrder ? (
           <div>
             <h2 className="text-2xl font-bold mb-4">Order Details</h2>
             <Card>
               <CardHeader>
                 <CardTitle className="flex justify-between items-center">
                   <span>Order #{scannedOrder.id}</span>
-                  <Badge variant={scannedOrder.status === 'Picked Up' ? 'default' : 'secondary'}>{scannedOrder.status}</Badge>
+                  <Badge variant={scannedOrder.status === 'Picked Up' ? 'secondary' : 'outline'}>{scannedOrder.status}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -139,7 +157,7 @@ export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
                  </div>
                  <div>
                     <p className="font-semibold">Ordered At:</p>
-                    <p>{format(new Date(scannedOrder.createdAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                    <p>{format(scannedOrder.createdAt, "MMMM d, yyyy 'at' h:mm a")}</p>
                  </div>
               </CardContent>
               <CardFooter className="flex justify-end gap-4">
@@ -166,7 +184,7 @@ export function QrScanner({ initialOrders }: { initialOrders: Order[] }) {
               </Alert>
             )}
 
-            {scannedOrderId && !scannedOrder && (
+            {scannedOrderId && !scannedOrder && !isLoading && (
                  <Alert variant="destructive" className="mt-4">
                     <AlertTitle>Order Not Found</AlertTitle>
                     <AlertDescription>

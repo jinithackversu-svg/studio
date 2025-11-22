@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -9,26 +10,31 @@ import { Separator } from '@/components/ui/separator';
 import { OrderStatusTracker } from './order-status-tracker';
 import { DigitalInvoice } from './digital-invoice';
 import Image from 'next/image';
+import { useDoc, useFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 
 export default function OrderDetails({ initialOrder }: { initialOrder: Order }) {
-  const [order, setOrder] = useState<Order>(initialOrder);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { firestore } = useFirebase();
 
-  useEffect(() => {
-    // In a real app, this would be a WebSocket or SSE connection for real-time updates.
-    // Here we just use the initial server-fetched data.
-    setOrder(initialOrder);
-  }, [initialOrder]);
+  const orderRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'orders', initialOrder.id);
+  }, [firestore, initialOrder.id]);
+
+  const { data: order, isLoading } = useDoc<Order>(orderRef);
 
   const handlePaymentSelection = (method: PaymentMethod) => {
+    if (!order) return;
     startTransition(async () => {
       try {
-        const updatedOrder = await updateOrderStatus(order.id, OrderStatus.Processing, method);
-        setOrder(updatedOrder);
+        await updateOrderStatus(order.id, OrderStatus.Processing, method);
+        // UI will update from listener
         toast({
           title: 'Payment method selected',
-          description: `Your order will be processed. Payment status: ${updatedOrder.paymentStatus}.`,
+          description: `Your order will now be processed.`,
         });
       } catch (error) {
         toast({
@@ -39,6 +45,14 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
       }
     });
   };
+  
+  if (isLoading) {
+    return <p>Loading order details...</p>
+  }
+  
+  if (!order) {
+    return <p>Order not found.</p>
+  }
 
   const showQrCode = order.status === OrderStatus.Ready || order.status === OrderStatus.PickedUp;
 
