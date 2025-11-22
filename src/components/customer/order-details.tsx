@@ -54,27 +54,7 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
 
   const handleOnlinePaymentSelection = () => {
     if (!order) return;
-    startTransition(async () => {
-        try {
-            const orderDocRef = doc(firestore, 'orders', order.id);
-            await updateDoc(orderDocRef, {
-                status: OrderStatus.Processing,
-                paymentMethod: PaymentMethod.Online,
-                paymentStatus: PaymentStatus.Paid
-            });
-            toast({
-                title: 'Payment Successful',
-                description: 'Your online payment has been confirmed.',
-            });
-        } catch (error) {
-            console.error("Error processing online payment:", error)
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not process online payment.',
-            });
-        }
-    });
+    router.push(`/payment/${order.id}`);
   };
   
   if (isLoading) {
