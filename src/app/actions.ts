@@ -12,6 +12,7 @@ import {
 } from '@/lib/types';
 import { mockMenuItems, mockOrders } from '@/lib/data';
 import { generateDigitalInvoice } from '@/ai/flows/generate-digital-invoice';
+import QRCode from 'qrcode';
 
 // In-memory data stores (for simulation purposes)
 let menuItems: MenuItem[] = [...mockMenuItems];
@@ -44,15 +45,18 @@ export async function placeOrder(items: OrderItem[]): Promise<Order> {
     throw new Error('Cart is empty.');
   }
 
+  const orderId = `ORD${(orders.length + 1).toString().padStart(3, '0')}`;
+  const qrCodeData = await QRCode.toDataURL(orderId);
+
   const newOrder: Order = {
-    id: `ORD${(orders.length + 1).toString().padStart(3, '0')}`,
+    id: orderId,
     customerName: 'Guest User', // In a real app, this would come from session
     items,
     total: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
     status: OrderStatus.PaymentAwaitingAcceptance,
     paymentMethod: PaymentMethod.None,
     paymentStatus: PaymentStatus.Pending,
-    qrCode: `qr_${Date.now()}`,
+    qrCode: qrCodeData,
     createdAt: new Date(),
   };
 
@@ -86,6 +90,7 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, pa
 
   revalidatePath('/operator/dashboard');
   revalidatePath(`/order/${orderId}`);
+  revalidatePath('/operator/scan');
 
   return orders[orderIndex];
 }
@@ -132,8 +137,7 @@ export async function generateInvoiceAction(orderId: string) {
     notFound();
   }
 
-  // Dummy QR code as a Base64 Data URI
-  const qrCodeDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEX///8AAABVwtN+AAABM0lEQVRIx2NgGAWjYBSMglEwCkYBGUBaxWH2WFS9mPX/Q/i/b+L/f/L/H6H/H/n/j+j/P/7/J/T/I/6/5f9f5f8f+f+P5P8/8v8f0f+P/P+H/n/k/z8S/z/y/x+J/5/4/4f+f8T/PzL/H4n/n/j/h/5/xP8/Mv8fiP+f+P+H/n/E/z8i/x+I/5/4/4f+f8T/PyL/H4j/n/j/h/5/xP8/Iv8fiP+f+P+H/n/E/z8i/x+I/5/4/4f+f8T/PyL/H4j/n/j/h/5/xP8/Iv8fiP+f+P+H/n/E/z8i/x+I/5/4/4f+f8T/PyL/H4j/n/j/h/5/xP8/Iv8fiP+f+P+H/n/E/z8i/x+I/5/4/4eGf2T+PyL/H4j/n/j/h/5/xP8/Iv8fiP+f+P+H/n/E/z8i/x+I/5/4/4f+f8T/PyL/H4j/n/j/h/5/xP8/Iv8fCgAADAD3uBHeoQ0wAAAAAElFTkSuQmCC';
+  const qrCodeDataUri = order.qrCode;
 
   const input = {
     customerName: order.customerName,

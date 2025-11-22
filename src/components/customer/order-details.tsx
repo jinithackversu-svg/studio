@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { OrderStatusTracker } from './order-status-tracker';
 import { DigitalInvoice } from './digital-invoice';
+import Image from 'next/image';
 
 export default function OrderDetails({ initialOrder }: { initialOrder: Order }) {
   const [order, setOrder] = useState<Order>(initialOrder);
@@ -38,6 +39,8 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
       }
     });
   };
+
+  const showQrCode = order.status === OrderStatus.Ready || order.status === OrderStatus.PickedUp;
 
   return (
     <div className="space-y-6">
@@ -80,7 +83,25 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
         </div>
       )}
 
-      {(order.status === OrderStatus.Ready || order.status === OrderStatus.PickedUp) && (
+      {showQrCode && (
+        <div>
+          <Separator className="my-6" />
+          <h3 className="text-xl font-bold mb-4 text-center">Scan at Counter for Pickup</h3>
+           <div className="flex flex-col items-center gap-4">
+              <div className="p-4 bg-white rounded-lg border">
+                <Image
+                  src={order.qrCode}
+                  alt={`QR Code for order ${order.id}`}
+                  width={200}
+                  height={200}
+                />
+              </div>
+              <p className="text-muted-foreground text-sm">Show this QR code to the operator</p>
+           </div>
+        </div>
+      )}
+      
+      {order.status === OrderStatus.PickedUp && (
         <div>
           <Separator className="my-6" />
           <h3 className="text-xl font-bold mb-4 text-center">Your Digital Invoice</h3>
