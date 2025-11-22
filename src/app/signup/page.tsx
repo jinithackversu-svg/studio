@@ -70,7 +70,7 @@ export default function SignUpPage() {
           name: values.name,
           email: values.email,
           phoneNumber: values.phoneNumber,
-          role: UserRole.Customer,
+          role: values.email === 'canteen@itmbu.ac.in' ? UserRole.Operator : UserRole.Customer,
         };
         await setDoc(doc(firestore, 'users', user.uid), userProfile);
 
