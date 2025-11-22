@@ -90,13 +90,10 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
       
       {order.status === OrderStatus.AcceptedPendingPayment && (
         <div className="p-4 bg-accent/50 rounded-lg text-center space-y-4">
-          <h3 className="text-lg font-semibold text-accent-foreground">Choose Your Payment Method</h3>
-          <p className="text-muted-foreground">Your order has been accepted! Please select a payment option.</p>
+          <h3 className="text-lg font-semibold text-accent-foreground">Confirm Payment Method</h3>
+          <p className="text-muted-foreground">Your order has been accepted! Please confirm you will pay with cash at the counter.</p>
           <div className="flex justify-center gap-4">
-            <Button onClick={() => router.push(`/payment/${order.id}`)} disabled={isPending}>
-              Pay Online
-            </Button>
-            <Button variant="secondary" onClick={handleCashPaymentSelection} disabled={isPending}>
+            <Button onClick={handleCashPaymentSelection} disabled={isPending}>
               Pay with Cash at Counter
             </Button>
           </div>
