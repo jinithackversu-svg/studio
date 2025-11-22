@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useTransition } from 'react';
@@ -45,7 +46,7 @@ export default function PaymentPage() {
                     description: 'Your payment has been processed.',
                 });
                 
-                router.push(`/order/${order.id}`);
+                router.push(`/payment/${order.id}/success`);
 
             } catch (error) {
                 console.error("Error processing payment:", error);
@@ -123,7 +124,7 @@ export default function PaymentPage() {
                     <CardFooter>
                         <Button className="w-full" onClick={handlePayment} disabled={isPending}>
                             {isPending ? (
-                                <Loader2 className="animate-spin" />
+                                <Loader2 className="animate-spin mr-2" />
                             ) : (
                                 <CreditCard className="mr-2 h-4 w-4" />
                             )}
