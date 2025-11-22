@@ -1,136 +1,84 @@
 {
   "entities": {
-    "Customer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Customer",
+    "UserProfile": {
+      "title": "User Profile",
       "type": "object",
-      "description": "Represents a customer in the CanteenConnect system.",
+      "description": "Represents a user's profile information.",
       "properties": {
-        "id": {
+        "id": { "type": "string", "description": "Unique user ID, same as Firebase Auth UID." },
+        "name": { "type": "string", "description": "The user's full name." },
+        "email": { "type": "string", "description": "The user's email address.", "format": "email" },
+        "phoneNumber": { "type": "string", "description": "The user's phone number." },
+        "role": {
           "type": "string",
-          "description": "Unique identifier for the Customer entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The full name of the customer."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the customer.",
-          "format": "email"
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The phone number of the customer."
+          "description": "The role of the user in the system.",
+          "enum": ["Customer", "Operator"]
         }
       },
-      "required": [
-        "id",
-        "name",
-        "email",
-        "phoneNumber"
-      ]
+      "required": ["id", "name", "email", "role"]
     },
-    "CanteenOperator": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "CanteenOperator",
-      "type": "object",
-      "description": "Represents a canteen operator in the CanteenConnect system.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CanteenOperator entity."
+    "MenuItem": {
+        "title": "Menu Item",
+        "type": "object",
+        "description": "A single item available on the canteen menu.",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "price": { "type": "number" },
+            "isAvailable": { "type": "boolean" },
+            "imageId": { "type": "string" }
         },
-        "name": {
-          "type": "string",
-          "description": "The full name of the canteen operator."
+        "required": ["name", "description", "price", "isAvailable", "imageId"]
+    },
+    "Order": {
+        "title": "Order",
+        "type": "object",
+        "description": "A customer's order.",
+        "properties": {
+            "id": { "type": "string" },
+            "customerName": { "type": "string" },
+            "customerId": { "type": "string" },
+            "items": { 
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "menuItemId": { "type": "string" },
+                        "name": { "type": "string" },
+                        "quantity": { "type": "number" },
+                        "price": { "type": "number" }
+                    },
+                    "required": ["menuItemId", "name", "quantity", "price"]
+                }
+            },
+            "total": { "type": "number" },
+            "status": { "type": "string" },
+            "paymentMethod": { "type": "string" },
+            "paymentStatus": { "type": "string" },
+            "qrCode": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" }
         },
-        "email": {
-          "type": "string",
-          "description": "The email address of the canteen operator.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
+        "required": ["customerName", "customerId", "items", "total", "status", "paymentMethod", "paymentStatus", "createdAt"]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "emailPassword"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "customers/{customerId}",
-        "definition": {
-          "entityName": "Customer",
-          "schema": {
-            "$ref": "#/backend/entities/Customer"
-          },
-          "description": "Stores customer profiles. Customers can only read/write their own profile.",
-          "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier of the customer, matching their Firebase auth UID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "roles_canteen_operator/{operatorId}",
-        "definition": {
-          "entityName": "CanteenOperator",
-          "schema": {
-            "$ref": "#/backend/entities/CanteenOperator"
-          },
-          "description": "Collection to store canteen operator role assignments. The existence of a document with the operator's UID grants operator access. This structure support simple existence checks in security rules.",
-          "params": [
-            {
-              "name": "operatorId",
-              "description": "The unique identifier of the canteen operator, matching their Firebase auth UID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "menu_items/{menuItemId}",
-        "definition": {
-          "entityName": "MenuItem",
-          "schema": {
-            "$ref": "#/backend/entities/MenuItem"
-          },
-          "description": "Collection to store menu items, manageable by canteen operators.",
-          "params": [
-            {
-              "name": "menuItemId",
-              "description": "The unique identifier of the menu item."
-            }
-          ]
-        }
-      },
-      {
-        "path": "orders/{orderId}",
-        "definition": {
-          "entityName": "Order",
-          "schema": {
-            "$ref": "#/backend/entities/Order"
-          },
-          "description": "Collection to store customer orders. Operators can access all orders.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The unique identifier of the order."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "This Firestore structure prioritizes security, scalability, and debuggability following the prescribed design principles. It leverages denormalization to ensure Authorization Independence, structural segregation for homogeneous security postures, and access modeling for consistent authorization patterns. The structure explicitly separates Customer and CanteenOperator data, using path-based ownership for customer data and dedicated collections for operator roles.\n\nAuthorization Independence is achieved by avoiding `get()` calls in security rules. The `customers/{customerId}` collection stores customer data directly, and access is controlled via `request.auth.uid`. Operator roles are managed through the `/roles_canteen_operator/{operatorId}` collection, enabling simple existence checks. This eliminates hierarchical dependencies, simplifying security rules and enabling atomic operations.\n\nQAPs (Rules are not Filters) are supported by structurally segregating data based on access requirements. Customer data and operator role data are stored in distinct collections, each with its own set of security rules. This ensures that `list` operations can be performed securely without exposing sensitive information or relying on complex filtering logic in the rules.\n\nExplicit state modeling is employed for orders using a `status` field, and a membership map is not required because there are no shared documents other than the global menu. Global roles are based on existence rather than content, using `/roles_canteen_operator/{operatorId}`. The naming conventions are semantic and consistent across all paths."
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores public profiles for all users."
+    },
+    "menu_items/{menuItemId}": {
+        "schema": { "$ref": "#/entities/MenuItem" },
+        "description": "Stores all menu items for the canteen."
+    },
+    "orders/{orderId}": {
+        "schema": { "$ref": "#/entities/Order" },
+        "description": "Stores all customer orders."
+    }
   }
 }

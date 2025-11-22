@@ -1,14 +1,46 @@
+'use client';
+
 import { getOrderById } from '@/app/actions';
 import { notFound } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import OrderDetails from '@/components/customer/order-details';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useUser } from '@/firebase';
+import { useEffect, useState } from 'react';
+import { Order } from '@/lib/types';
 
-export default async function OrderPage({ params }: { params: { id: string } }) {
-  const order = await getOrderById(params.id);
+export default function OrderPage({ params }: { params: { id: string } }) {
+  const { user, isUserLoading } = useUser();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isUserLoading) return;
+
+    const fetchOrder = async () => {
+      const fetchedOrder = await getOrderById(params.id);
+      if (!fetchedOrder) {
+        notFound();
+      }
+
+      // Security check: ensure the logged-in user owns this order
+      if (user && fetchedOrder.customerId !== user.uid) {
+         notFound(); // Or show an access denied page
+      }
+      
+      setOrder(fetchedOrder);
+      setLoading(false);
+    };
+
+    fetchOrder();
+  }, [params.id, user, isUserLoading]);
+  
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   if (!order) {
-    notFound();
+    return notFound();
   }
 
   return (

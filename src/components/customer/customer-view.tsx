@@ -2,8 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { MenuItem, OrderItem } from '@/lib/types';
+import { useRouter } from 'next/navigation';
+import { MenuItem, OrderItem, UserRole } from '@/lib/types';
 import { placeOrder } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -12,17 +12,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { PlusCircle, ShoppingCart } from 'lucide-react';
 import { CartSheet } from './cart-sheet';
+import { useUser } from '@/firebase';
+import Link from 'next/link';
+import { useUserRole } from '@/hooks/use-user-role';
 
 export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const pathname = usePathname();
-
-  if (pathname.startsWith('/operator')) {
-    return null;
-  }
+  const { user, isUserLoading } = useUser();
+  const { userProfile, isRoleLoading } = useUserRole();
 
   const handleAddToCart = (item: MenuItem) => {
     setCart(prevCart => {
@@ -54,8 +54,26 @@ export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   };
 
   const handlePlaceOrder = async () => {
+    if (!user || !userProfile) {
+        toast({
+            variant: 'destructive',
+            title: 'Not logged in',
+            description: 'You must be logged in to place an order.',
+        });
+        router.push('/login');
+        return;
+    }
+    if (userProfile.role !== UserRole.Customer) {
+        toast({
+            variant: 'destructive',
+            title: 'Permission Denied',
+            description: 'Only customers can place orders.',
+        });
+        return;
+    }
+
     try {
-      const newOrder = await placeOrder(cart);
+      const newOrder = await placeOrder(cart, user.uid, userProfile.name);
       toast({
         title: 'Order Placed!',
         description: `Your order #${newOrder.id} has been placed successfully.`,
@@ -73,6 +91,22 @@ export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   };
 
   const availableItems = menuItems.filter(item => item.isAvailable);
+
+  if (isUserLoading || isRoleLoading) {
+    return <div>Loading...</div>;
+  }
+  
+  if (userProfile && userProfile.role === UserRole.Operator) {
+    return (
+        <div className="container py-8 text-center">
+            <h1 className="text-2xl font-bold">Welcome, Operator!</h1>
+            <p className="text-muted-foreground">You are logged in as a canteen operator.</p>
+            <Button asChild className="mt-4">
+                <Link href="/operator/dashboard">Go to Operator Dashboard</Link>
+            </Button>
+        </div>
+    )
+  }
 
   return (
     <div className="container py-8">

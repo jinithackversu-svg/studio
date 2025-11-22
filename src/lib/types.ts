@@ -37,6 +37,7 @@ export enum PaymentStatus {
 export type Order = {
   id: string;
   customerName: string;
+  customerId: string;
   items: OrderItem[];
   total: number;
   status: OrderStatus;
@@ -51,9 +52,10 @@ export enum UserRole {
   Operator = 'Operator',
 }
 
-export type User = {
+export type UserProfile = {
   id: string;
   name: string;
   email: string;
+  phoneNumber?: string;
   role: UserRole;
 };
