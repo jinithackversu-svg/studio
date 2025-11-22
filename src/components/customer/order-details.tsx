@@ -54,7 +54,7 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
 
   const handleOnlinePaymentSelection = () => {
     if (!order) return;
-    router.push(`/payment/${order.id}`);
+    router.push(`/order/${order.id}/payment`);
   };
   
   if (isLoading) {

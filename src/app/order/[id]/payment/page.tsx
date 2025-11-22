@@ -42,7 +42,7 @@ export default function PaymentPage() {
           title: 'Payment Successful',
           description: 'Your online payment has been confirmed.',
         });
-        router.push(`/payment/${order.id}/success`);
+        router.push(`/order/${order.id}/payment/success`);
       } catch (error) {
         console.error('Error processing online payment:', error);
         toast({
