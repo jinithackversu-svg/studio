@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { MenuItem, OrderItem } from '@/lib/types';
 import { placeOrder } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +18,11 @@ export default function CustomerView({ menuItems }: { menuItems: MenuItem[] }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const pathname = usePathname();
+
+  if (pathname.startsWith('/operator')) {
+    return null;
+  }
 
   const handleAddToCart = (item: MenuItem) => {
     setCart(prevCart => {
