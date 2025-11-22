@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer in the CanteenConnect system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The phone number of the customer."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "phoneNumber"
+      ]
+    },
+    "CanteenOperator": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CanteenOperator",
+      "type": "object",
+      "description": "Represents a canteen operator in the CanteenConnect system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CanteenOperator entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the canteen operator."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the canteen operator.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer profiles. Customers can only read/write their own profile.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier of the customer, matching their Firebase auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "roles_canteen_operator/{operatorId}",
+        "definition": {
+          "entityName": "CanteenOperator",
+          "schema": {
+            "$ref": "#/backend/entities/CanteenOperator"
+          },
+          "description": "Collection to store canteen operator role assignments. The existence of a document with the operator's UID grants operator access. This structure support simple existence checks in security rules.",
+          "params": [
+            {
+              "name": "operatorId",
+              "description": "The unique identifier of the canteen operator, matching their Firebase auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "menu_items/{menuItemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Collection to store menu items, manageable by canteen operators.",
+          "params": [
+            {
+              "name": "menuItemId",
+              "description": "The unique identifier of the menu item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Collection to store customer orders. Operators can access all orders.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique identifier of the order."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure prioritizes security, scalability, and debuggability following the prescribed design principles. It leverages denormalization to ensure Authorization Independence, structural segregation for homogeneous security postures, and access modeling for consistent authorization patterns. The structure explicitly separates Customer and CanteenOperator data, using path-based ownership for customer data and dedicated collections for operator roles.\n\nAuthorization Independence is achieved by avoiding `get()` calls in security rules. The `customers/{customerId}` collection stores customer data directly, and access is controlled via `request.auth.uid`. Operator roles are managed through the `/roles_canteen_operator/{operatorId}` collection, enabling simple existence checks. This eliminates hierarchical dependencies, simplifying security rules and enabling atomic operations.\n\nQAPs (Rules are not Filters) are supported by structurally segregating data based on access requirements. Customer data and operator role data are stored in distinct collections, each with its own set of security rules. This ensures that `list` operations can be performed securely without exposing sensitive information or relying on complex filtering logic in the rules.\n\nExplicit state modeling is employed for orders using a `status` field, and a membership map is not required because there are no shared documents other than the global menu. Global roles are based on existence rather than content, using `/roles_canteen_operator/{operatorId}`. The naming conventions are semantic and consistent across all paths."
+  }
+}
