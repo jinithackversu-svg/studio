@@ -1,9 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
-import { Order, OrderStatus, PaymentMethod } from '@/lib/types';
-import { updateOrderStatus } from '@/app/actions';
+import { useTransition } from 'react';
+import { Order, OrderStatus, PaymentMethod, PaymentStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -11,7 +10,7 @@ import { OrderStatusTracker } from './order-status-tracker';
 import { DigitalInvoice } from './digital-invoice';
 import Image from 'next/image';
 import { useDoc, useFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 
 export default function OrderDetails({ initialOrder }: { initialOrder: Order }) {
@@ -30,13 +29,19 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
     if (!order) return;
     startTransition(async () => {
       try {
-        await updateOrderStatus(order.id, OrderStatus.Processing, method);
-        // UI will update from listener
+        const orderDocRef = doc(firestore, 'orders', order.id);
+        const updateData: {[key: string]: any} = { status: OrderStatus.Processing, paymentMethod: method };
+        if (method === PaymentMethod.Online) {
+          updateData.paymentStatus = PaymentStatus.Paid;
+        }
+        await updateDoc(orderDocRef, updateData);
+
         toast({
           title: 'Payment method selected',
           description: `Your order will now be processed.`,
         });
       } catch (error) {
+        console.error("Error updating order status:", error)
         toast({
           variant: 'destructive',
           title: 'Error',

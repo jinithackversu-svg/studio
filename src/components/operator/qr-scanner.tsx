@@ -3,8 +3,7 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react';
 import jsQR from 'jsqr';
-import { Order, OrderStatus } from '@/lib/types';
-import { updateOrderStatus } from '@/app/actions';
+import { Order, OrderStatus, PaymentStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -12,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { useCollection, useFirebase } from '@/firebase';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 
 export function QrScanner() {
@@ -100,13 +99,22 @@ export function QrScanner() {
     
     startTransition(async () => {
         try {
-            await updateOrderStatus(scannedOrder.id, OrderStatus.PickedUp);
-            // UI will update from live listener
+            const orderDocRef = doc(firestore, 'orders', scannedOrder.id);
+            const updateData: {[key: string]: any} = { status: OrderStatus.PickedUp };
+
+            // Simulate payment for cash on pickup
+            if (scannedOrder.paymentMethod === 'Cash') {
+              updateData.paymentStatus = PaymentStatus.Paid;
+            }
+
+            await updateDoc(orderDocRef, updateData);
+
             toast({
                 title: 'Pickup Confirmed',
                 description: `Order #${scannedOrder.id} has been marked as picked up.`,
             });
         } catch (error) {
+            console.error("Error confirming pickup:", error)
             toast({
                 variant: 'destructive',
                 title: 'Error',
@@ -157,7 +165,7 @@ export function QrScanner() {
                  </div>
                  <div>
                     <p className="font-semibold">Ordered At:</p>
-                    <p>{format(scannedOrder.createdAt, "MMMM d, yyyy 'at' h:mm a")}</p>
+                    <p>{format((scannedOrder.createdAt as any).toDate(), "MMMM d, yyyy 'at' h:mm a")}</p>
                  </div>
               </CardContent>
               <CardFooter className="flex justify-end gap-4">

@@ -3,7 +3,6 @@
 
 import { useState, useTransition, useMemo } from 'react';
 import { Order, OrderStatus } from '@/lib/types';
-import { updateOrderStatus } from '@/app/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase } from '@/firebase';
-import { collection, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, orderBy, query, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 
 export function OrderQueue() {
@@ -29,9 +28,12 @@ export function OrderQueue() {
     const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
         startTransition(async () => {
             try {
-                await updateOrderStatus(orderId, newStatus);
+                const orderDocRef = doc(firestore, 'orders', orderId);
+                await updateDoc(orderDocRef, { status: newStatus });
+
                 toast({ title: 'Success', description: `Order status updated.` });
             } catch (error) {
+                console.error("Error updating order status:", error)
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to update order status.' });
             }
         });
