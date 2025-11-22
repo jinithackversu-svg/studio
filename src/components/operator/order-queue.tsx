@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase } from '@/firebase';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 
 export function OrderQueue() {
@@ -29,7 +29,6 @@ export function OrderQueue() {
     const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
         startTransition(async () => {
             try {
-                // We don't need the returned value as the real-time listener will update the UI
                 await updateOrderStatus(orderId, newStatus);
                 toast({ title: 'Success', description: `Order status updated.` });
             } catch (error) {
@@ -38,9 +37,19 @@ export function OrderQueue() {
         });
     };
 
+    const processedOrders = useMemo(() => {
+        if (!orders) return [];
+        return orders.map(order => {
+            const createdAt = order.createdAt as unknown as Timestamp;
+            return {
+                ...order,
+                createdAt: createdAt.toDate(),
+            };
+        });
+    }, [orders]);
+
     const groupedOrders = useMemo(() => {
-        if (!orders) return {} as Record<OrderStatus, Order[]>;
-        return orders.reduce((acc, order) => {
+        return processedOrders.reduce((acc, order) => {
             const status = order.status;
             if (!acc[status]) {
                 acc[status] = [];
@@ -48,7 +57,7 @@ export function OrderQueue() {
             acc[status].push(order);
             return acc;
         }, {} as Record<OrderStatus, Order[]>);
-    }, [orders]);
+    }, [processedOrders]);
 
     const tabs = [
         OrderStatus.PaymentAwaitingAcceptance,
@@ -62,7 +71,7 @@ export function OrderQueue() {
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle>Order #{order.id}</CardTitle>
+                        <CardTitle>Order #{order.id.substring(0, 7)}...</CardTitle>
                         <CardDescription>
                             {order.customerName} - {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                         </CardDescription>

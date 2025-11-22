@@ -9,8 +9,9 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useMemo } from 'react';
 
 export default function MyOrdersPage() {
   const { user, firestore, isUserLoading } = useFirebase();
@@ -25,6 +26,18 @@ export default function MyOrdersPage() {
   }, [firestore, user]);
 
   const { data: orders, isLoading } = useCollection<Order>(ordersQuery);
+  
+  const processedOrders = useMemo(() => {
+    if (!orders) return [];
+    return orders.map(order => {
+        const createdAt = order.createdAt as unknown as Timestamp;
+        return {
+            ...order,
+            createdAt: createdAt.toDate(),
+        };
+    });
+  }, [orders]);
+
 
   const pageIsLoading = isUserLoading || isLoading;
 
@@ -43,11 +56,11 @@ export default function MyOrdersPage() {
                 <p>Loading your orders...</p>
               ) : !user ? (
                  <p className="text-center text-muted-foreground">Please <Link href="/login" className="text-primary underline">log in</Link> to see your orders.</p>
-              ) : orders && orders.length === 0 ? (
+              ) : processedOrders.length === 0 ? (
                 <p className="text-center text-muted-foreground">You haven't placed any orders yet.</p>
               ) : (
                 <div className="space-y-4">
-                  {orders && orders.map(order => (
+                  {processedOrders.map(order => (
                     <Card key={order.id}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
