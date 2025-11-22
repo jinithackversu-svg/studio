@@ -12,11 +12,13 @@ import Image from 'next/image';
 import { useDoc, useFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
+import { useRouter } from 'next/navigation';
 
 export default function OrderDetails({ initialOrder }: { initialOrder: Order }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const router = useRouter();
 
   const orderRef = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -25,20 +27,19 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
 
   const { data: order, isLoading } = useDoc<Order>(orderRef);
 
-  const handlePaymentSelection = (method: PaymentMethod) => {
+  const handleCashPaymentSelection = () => {
     if (!order) return;
     startTransition(async () => {
       try {
         const orderDocRef = doc(firestore, 'orders', order.id);
-        const updateData: {[key: string]: any} = { status: OrderStatus.Processing, paymentMethod: method };
-        if (method === PaymentMethod.Online) {
-          updateData.paymentStatus = PaymentStatus.Paid;
-        }
-        await updateDoc(orderDocRef, updateData);
+        await updateDoc(orderDocRef, {
+            status: OrderStatus.Processing,
+            paymentMethod: PaymentMethod.Cash
+        });
 
         toast({
           title: 'Payment method selected',
-          description: `Your order will now be processed.`,
+          description: `You've chosen to pay with cash. Your order will now be processed.`,
         });
       } catch (error) {
         console.error("Error updating order status:", error)
@@ -92,10 +93,10 @@ export default function OrderDetails({ initialOrder }: { initialOrder: Order }) 
           <h3 className="text-lg font-semibold text-accent-foreground">Choose Your Payment Method</h3>
           <p className="text-muted-foreground">Your order has been accepted! Please select a payment option.</p>
           <div className="flex justify-center gap-4">
-            <Button onClick={() => handlePaymentSelection(PaymentMethod.Online)} disabled={isPending}>
+            <Button onClick={() => router.push(`/payment/${order.id}`)} disabled={isPending}>
               Pay Online
             </Button>
-            <Button variant="secondary" onClick={() => handlePaymentSelection(PaymentMethod.Cash)} disabled={isPending}>
+            <Button variant="secondary" onClick={handleCashPaymentSelection} disabled={isPending}>
               Pay with Cash at Counter
             </Button>
           </div>
